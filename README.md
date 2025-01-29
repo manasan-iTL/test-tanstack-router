@@ -1,0 +1,56 @@
+## tanstack router　動作検証
+- outletがないnested Route
+    - 親のコンポーネントはレンダリングされない
+    - Rootコンポーネントはレンダリングされる
+- File Based routing
+    - /$service（Root）と/$service/（Index）は別物
+    - 階層にしたいディレクトリ構成と同じ階層にRootファイル（$service.tsx）を作成しOutletを置くとマッチした子ルートでレンダリングされる
+    - 上記でOutletが無いと子ルートはレンダリングされない
+- ディレクトリ内に$service.tsxを置くと意味合いが異なる
+    - /$service/$service扱いになる
+- リクエスト処理は基本並列
+- _suffixを付けるとパスは維持したままOutletを除外できる
+
+## Tanstack query
+- ルート間の移動ではキャッシュは維持される
+    - ブラウザのメモリ上にキャッシュされるので、リロードしたら消える
+- cacheTime === gcTime
+- cacheTimeとstaleTimeは扱いが全く異なる
+    - イメージ
+    - cacheTime => キャッシュする時間（経過した場合キャッシュを削除）
+        - cacheTimeが存在する場合、一旦cacheされたものを返し同時に通信を行いキャッシュを最新状態にする
+    - staleTime => キャッシュが最新状態だとみなす時間（経過した場合キャッシュは古い）
+        - statleTimeが存在する場合、cacheを最新として扱いcacheの更新をスキップする
+- queryClient
+    - getQueryData（同期関数）
+        - データをキャッシュから取得、無い場合はundefined
+    - ensureQueryData
+        - getQueryDataとほぼ同じ
+        - 違いは非同期関数で、データが存在しない場合はデータ取得を行うfetchQueryを呼び出す
+- query key
+    - 基本はArray<プリミティブ>
+    - 配列内の順番は区別される
+    - 順番が異なれば別のキーとして扱う
+    - 配列の一つの要素にオブジェクトがある場合、オブジェクト内のitemの順番やキーを増やしても同じと見なされる
+- 依存関係のデータのフェッチ（直列）
+    - useQuery()のenabledオプションを設定するだけ
+    - 依存する値が存在するかどうかでフェッチの開始タイミングが異なる
+- useSuspenseQuery
+    - そもそもSuspense内は直列実行
+    - リクエストウォーターフォールに気を付ける
+    - 上記のenabledは使用できない
+        - 返り値がデータ本体であることがSuspenseでは保障される（enableではundefind）の可能性がある
+        - そもそも直列で実行されるため依存先のsuspense、コンポーネントがレンダリングされてから実行すれば良い＝コンポーネントを分割すること
+        - https://github.com/TanStack/query/discussions/6206
+- データロードの遅延読み込み
+    - https://tanstack.com/router/latest/docs/framework/react/guide/deferred-data-loading/#deferred-data-loading-with-external-libraries
+    - 基本的にはloader内でtanstack query clientを呼び出しpreloadさせる
+- リクエストウォーターフォール問題
+    - https://zenn.dev/aishift/articles/1b689547d9daf1
+    - 分かりやすい解説
+    - https://zenn.dev/aishift/articles/1b689547d9daf1
+    - tanstack router使用時はとにかくLoader APIを記述すること！！
+
+## React Key属性
+- 同階層で重複しなければOK
+- https://ja.react.dev/learn/rendering-lists#rules-of-keys
